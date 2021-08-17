@@ -2,7 +2,7 @@
  * @name HideStreamPreview
  * @author blurrpy
  * @description Hide your own stream preview in multistream calls.
- * @version 0.0.3
+ * @version 0.0.4
  * @authorLink https://github.com/danegottwald
  * @website https://github.com/danegottwald
  * @donate https://www.paypal.com/paypalme/danegottwald
@@ -21,13 +21,13 @@ const config = {
             "discord_id": "154401402263699457",
             "github_username": "danegottwald"
         }],
-        "version": "0.0.3",
+        "version": "0.0.4",
         "description": "Hide your own stream preview when screen sharing with multiple users",
-        "github": "",
-        "github_raw": ""
+        "github": "https://github.com/danegottwald",
+        "github_raw": "https://raw.githubusercontent.com/danegottwald/BetterDiscordPlugins/main/HideStreamPreview/HideStreamPreview.plugin.js"
     },
     "changelog": [
-        //{"title": "New Stuff", "items": ["Added more settings", "Added changelog"]},
+        { "title": "Updates!", "items": ["Removed deprecated DiscordAPI use", "Bug fixes"] },
     ],
     "main": "HideStreamPreview.js"
 };
@@ -35,7 +35,7 @@ const config = {
 var settings = {
     "showWhenLowStreams": {
         "title": "Show Own Stream At Low Stream Count (1-2 streams)",
-        "description": "Displays stream preview when there are less than 3 active streams",
+        "description": "Display stream preview until 3 streams are active",
         "value": true
     }
 }
@@ -65,8 +65,13 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
     stop() { }
 
-    } : (([Plugin, Library]) => {
-    const { DiscordAPI, DiscordModules : { StreamStore }, Patcher, PluginUtilities, Logger } = Library;
+} : (([Plugin, Library]) => {
+    const {
+        DiscordModules: { UserInfoStore, SelectedGuildStore, SelectedChannelStore, StreamStore, UserNameResolver, UserStore },
+        Settings,
+        PluginUpdater,
+        PluginUtilities,
+    } = Library;
 
     return class HideStreamPreview extends Plugin {
         load() {
@@ -77,12 +82,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
         onStart() {
             // Check for Plugin Updates
-            ZLibrary.PluginUpdater.checkForUpdate(this.getName(), this.getVersion(), "https://raw.githubusercontent.com/danegottwald/BetterDiscordPlugins/main/HideStreamPreview/HideStreamPreview.plugin.js");
+            PluginUpdater.checkForUpdate(this.getName(), this.getVersion(), "https://raw.githubusercontent.com/danegottwald/BetterDiscordPlugins/main/HideStreamPreview/HideStreamPreview.plugin.js");
 
-            Patcher.before(Logger, "log", (t, a) => {
-                a[0] = "Patched Message: " + a[0];
-            });
-            
             // Load Settings from Config on Startup
             Object.entries(PluginUtilities.loadData("HideStreamPreview", "settings", {})).forEach(([setting, value]) => {
                 settings[setting]["value"] = value
@@ -90,15 +91,15 @@ module.exports = !global.ZeresPluginLibrary ? class {
         }
 
         onStop() {
-            Patcher.unpatchAll();
         }
 
-        getSettingsPanel () {
-            var panel = new Library.Settings.SettingPanel();
+        getSettingsPanel() {
+            // Dynamically create settings panel depending on the keys in the 'settings' dictionary
+            var panel = new Settings.SettingPanel();
             Object.entries(settings).forEach(([setting, content]) => {
                 panel.append(
-                    new Library.Settings.Switch(
-                        content["title"], content["description"], content["value"], 
+                    new Settings.Switch(
+                        content["title"], content["description"], content["value"],
                         (val) => {
                             settings[setting]["value"] = val;
                             PluginUtilities.saveSettings("HideStreamPreview", { [setting]: val });
@@ -106,32 +107,34 @@ module.exports = !global.ZeresPluginLibrary ? class {
                     )
                 );
             });
-                
+
             return panel.getElement();
         }
 
         // Hide stream preview when the wrapper for the video tiles is targeted
         observer(e) {
-            if (e.target.className.includes("previewWrapper")) {
-               this._hideStreamPreview();
+            if (e.target.tagName == "DIV" && e.target.className.includes("previewWrapper")) {
+                this._hideStreamPreview();
             }
         }
 
         _hideStreamPreview() {
+            // Get username/nickname
+            let username = UserNameResolver.getName(SelectedGuildStore.getGuildId(), SelectedChannelStore.getChannelId(), UserStore.getUser(UserInfoStore.getId()));
+
             // Only hide stream preview if there are three or more streams OR if setting is false
             if (!settings["showWhenLowStreams"]["value"] || StreamStore.getAllActiveStreams().length >= 3) {
+                // Grab the 'span' element that refers to the current user
                 let element = Array.from(document.getElementsByTagName('span')).find(span =>
-                    ((span.textContent == DiscordAPI.currentUser.discordObject.username || 
-                        span.textContent == DiscordAPI.currentGuild.members[0].nickname) &&
-                        span.className.includes("overlayTitleText"))
+                    (span.textContent == username && span.className.includes("overlayTitleText"))
                 )
-                if (element) {
-                    while (element.parentElement && !element.parentElement.classList.contains("tile-kezkfV")) {
-                        element = element.parentElement;
-                    }
-                    if (element.parentElement != null) {
-                        element.parentElement.style.display = "none";
-                    }
+                // Locate the parent div container for the stream tile
+                while (element && !element.classList.contains("tile-kezkfV")) {
+                    element = element.parentElement;
+                }
+                // Hide the element if it exists
+                if (element != null) {
+                    element.style.display = "none";
                 }
             }
         }
