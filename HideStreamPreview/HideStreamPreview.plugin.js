@@ -55,7 +55,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
                     if (error) {
                         return electron.shell.openExternal("https://github.com/rauenzi/BDPluginLibrary");
                     }
-                    fs.writeFileSync(path.join(BdApi.Plugins.folder, "HideStreamPreview.plugin.js"), body);
+                    fs.writeFileSync(path.join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), body);
                 });
             }
         });
