@@ -2,6 +2,9 @@
 
 Annoyed that Discord doesn't let you hide your own stream? Me too. So I made a little thing that should let you go ahead and do that.
 
+## Disclaimer 
+This does currently not work on popouts.
+
 ## Instructions
  - Install and you're good to go!
 
