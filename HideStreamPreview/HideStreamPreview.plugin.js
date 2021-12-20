@@ -2,7 +2,7 @@
  * @name HideStreamPreview
  * @author blurrpy
  * @description Hide your own stream preview in multistream calls.
- * @version 0.0.4
+ * @version 0.0.5
  * @authorLink https://github.com/danegottwald
  * @website https://github.com/danegottwald
  * @donate https://www.paypal.com/paypalme/danegottwald
@@ -21,7 +21,7 @@ const config = {
             "discord_id": "154401402263699457",
             "github_username": "danegottwald"
         }],
-        "version": "0.0.4",
+        "version": "0.0.5",
         "description": "Hide your own stream preview when screen sharing with multiple users",
         "github": "https://github.com/danegottwald",
         "github_raw": "https://raw.githubusercontent.com/danegottwald/BetterDiscordPlugins/main/HideStreamPreview/HideStreamPreview.plugin.js"
