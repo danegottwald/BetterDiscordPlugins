@@ -67,7 +67,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 } : (([Plugin, Library]) => {
     const {
-        DiscordModules: { UserInfoStore, SelectedGuildStore, SelectedChannelStore, StreamStore, UserNameResolver, UserStore },
+        DiscordModules: { GuildStore, SelectedGuildStore, SelectedChannelStore, StreamStore, UserNameResolver, UserStore, GuildMemberStore },
         Settings,
         PluginUpdater,
         PluginUtilities,
@@ -118,26 +118,58 @@ module.exports = !global.ZeresPluginLibrary ? class {
             }
         }
 
-        _hideStreamPreview() {
-            // Get username/nickname
-            let username = UserNameResolver.getName(SelectedGuildStore.getGuildId(), SelectedChannelStore.getChannelId(), UserStore.getUser(UserInfoStore.getId()));
+        _grabGuildId() {
+            // Use regex pattern to match and capture the ID from channel links
+            const pattern = /\/channels\/(\d+)/;
+            
+            // Find first correct link element
+            let linkElement = Array.from(document.getElementsByTagName("a")).find(a => (a.href.match(pattern)))
 
+            if (linkElement) {
+                return linkElement.href.match(pattern)[1];
+            } else {
+                console.error("Unable to grab guild ID, attempting to continue")
+            }
+        }
+
+        _hideStreamPreview() {
+            // Use UserStore to get the current user ID and information
+            const currentUser = UserStore.getCurrentUser();
+            
+            // Check if currentUser is valid
+            if (!currentUser) {
+                console.error('Unable to get current user information, attempting to continue');
+            }
+            
+            const userId = currentUser.id;
+            const username = currentUser.username;
+
+            // Use GuildMemberStore to get the current users nickname in the guild/server
+            const nickname = GuildMemberStore.getNick(this._grabGuildId(), userId)
+            if (!nickname) {
+                console.error('Unable to get current user nickname, attempting to continue');
+            }
+        
             // Only hide stream preview if there are three or more streams OR if setting is false
             if (!settings["showWhenLowStreams"]["value"] || StreamStore.getAllActiveStreams().length >= 3) {
-                // Grab the 'span' element that refers to the current user
-                let element = Array.from(document.getElementsByTagName('span')).find(span =>
-                    (span.textContent == username && span.className.includes("overlayTitleText"))
-                )
+                // Grab the 'span' element that refers to the current user or current nick
+                let element = Array.from(document.getElementsByTagName('span')).find(span => ((span.textContent.toLowerCase() == username || span.textContent == nickname) && span.className.includes("overlayTitleText"))
+            );
+                
                 // Locate the parent div container for the stream tile
-                while (element && !element.classList.contains("tile-kezkfV")) {
+                // As of July 25 2024 this div container is 8 parents away
+                const numParents = 8;
+                for (let i = 0; i < numParents; i++) {
                     element = element.parentElement;
                 }
+        
                 // Hide the element if it exists
                 if (element != null) {
                     element.style.display = "none";
                 }
             }
         }
+        
 
     };
 
